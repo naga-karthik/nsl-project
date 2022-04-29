@@ -150,8 +150,9 @@ def main(args):
     # We need to do a little trick because the validation set should not use the augmentation.
     train_dataset = CIFAR10(root='./data', train=True, transform=train_transform, download=True)
     val_dataset = CIFAR10(root='./data', train=True, transform=test_transform, download=True)
-    train_set, _ = torch.utils.data.random_split(train_dataset, [45000, 5000])
-    _, val_set = torch.utils.data.random_split(val_dataset, [45000, 5000])
+    
+    train_set, _ = torch.utils.data.random_split(train_dataset, [45000, 5000], generator=torch.Generator().manual_seed(args.seed))
+     _, val_set = torch.utils.data.random_split(val_dataset, [45000, 5000], generator=torch.Generator().manual_seed(args.seed))
 
     # Loading the test set
     test_set = CIFAR10(root='./data', train=False, transform=test_transform, download=True)
