@@ -3,11 +3,12 @@ import torch
 import torchvision.models as models
 
 def mem_report():
-      print("CPU RAM Free: " + humanize.naturalsize( psutil.virtual_memory().available ))
+      # print("CPU RAM Free: " + humanize.naturalsize( psutil.virtual_memory().available ))
 
       GPUs = GPUtil.getGPUs()
       for i, gpu in enumerate(GPUs):
-            print('GPU {:d} ... Mem Free: {:.0f}MB / {:.0f}MB | Utilization {:3.0f}%'.format(i, gpu.memoryFree, gpu.memoryTotal, gpu.memoryUtil*100))
+            # print('GPU {:d} ... Mem Free: {:.0f}MB / {:.0f}MB | Utilization {:3.0f}%'.format(i, gpu.memoryFree, gpu.memoryTotal, gpu.memoryUtil*100))
+            pass
       return gpu.memoryTotal - gpu.memoryFree
 
 
