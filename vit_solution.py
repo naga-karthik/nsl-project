@@ -393,7 +393,7 @@ class VisionTransformer(nn.Module):
         """
         # Preprocess input
         x = self.get_patches(x, self.patch_size)
-        B, T, _ = x.shape
+        B, T, _ = x.shape   # T is the number of patches
         x = self.input_layer(x)
         
         # Add CLS token and positional encoding
