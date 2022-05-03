@@ -131,18 +131,22 @@ def main(args):
     # wandb
     wandb.init(
         project='nsl-project',
-        group=args.dataset,
-        name=args.exp_id,
+        group=args.dataset+'_bayes',
+        # name=args.exp_id,
         config=args
         )
 
     test_transform = transforms.Compose([transforms.ToTensor(),
                                      transforms.Normalize([0.49139968, 0.48215841, 0.44653091], [0.24703223, 0.24348513, 0.26158784])])
     # For training, we add some augmentation. Networks are too powerful and would overfit.
+    img_h, img_w = 32, 32
     train_transform = transforms.Compose([transforms.RandomHorizontalFlip(),
-                                          transforms.RandomResizedCrop((32,32),scale=(0.8,1.0),ratio=(0.9,1.1)),
-                                          transforms.ToTensor(),
-                                          transforms.Normalize([0.49139968, 0.48215841, 0.44653091], [0.24703223, 0.24348513, 0.26158784])])
+                                        transforms.RandomResizedCrop((img_h, img_w)),
+                                        transforms.ColorJitter(brightness=0.3, contrast=0.3, hue=0.2),
+                                        transforms.RandomRotation(degrees=15),
+                                        transforms.ToTensor(),
+                                        transforms.Normalize([0.49139968, 0.48215841, 0.44653091], [0.24703223, 0.24348513, 0.26158784])])
+
     # Loading the training dataset. We need to split it into a training and validation part
     # We need to do a little trick because the validation set should not use the augmentation.
     if args.dataset == 'cifar100':
@@ -184,14 +188,18 @@ def main(args):
     test_dataloader = DataLoader(test_set, batch_size=args.batch_size, shuffle=False, drop_last=False, num_workers=4)
 
     # Model
+    num_patches = (img_h//args.patch_size) *  (img_w//args.patch_size) 
     if args.model == "vit":
         model = VisionTransformer(
             num_layers=args.layers,
             block=args.block,
             num_classes=num_classes,
             patch_size=args.patch_size,
-            num_patches=64,
-            hidden_dim=384,
+            num_patches=num_patches,
+            embed_dim=args.hidden_dim//2,
+            hidden_dim=args.hidden_dim,
+            num_heads=args.num_heads,
+            dropout=args.dropout,
             )
     else:
         raise ValueError("Unknown model {0}".format(args.model))
@@ -208,7 +216,7 @@ def main(args):
         optimizer = optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
 
     # Scheduler
-    scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=50, eta_min=1e-5)
+    scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.epochs, eta_min=1e-4)
 
     print(
         f"Initialized {args.model.upper()} model with {sum(p.numel() for p in model.parameters())} "
@@ -280,6 +288,24 @@ if __name__ == "__main__":
         default=4,
         help="the patch size to be used (default: %(default)s.",
     )
+    model.add_argument(
+        "-hdim", "--hidden_dim",
+        type=int,
+        default=384,
+        help="dimension of the hidden layers (default: %(default)s.",
+    )
+    model.add_argument(
+        "-nheads", "--num_heads",
+        type=int,
+        default=8,
+        help="dimension of the hidden layers (default: %(default)s.",
+    )
+    model.add_argument(
+    "-drop", "--dropout",
+    type=float,
+    default=0.0,
+    help="dimension of the hidden layers (default: %(default)s.",
+    )
 
     optimization = parser.add_argument_group("Optimization")
     optimization.add_argument(
@@ -311,7 +337,7 @@ if __name__ == "__main__":
     optimization.add_argument(
         "--weight_decay",
         type=float,
-        default=5e-4,
+        default=1e-3,
         help="weight decay (default: %(default)s).",
     )
 
@@ -319,7 +345,7 @@ if __name__ == "__main__":
     exp.add_argument(
         "--exp_id",
         type=str,
-        default="debug",
+        default="cif100",
         help="unique experiment identifier (default: %(default)s).",
     )
     exp.add_argument(
