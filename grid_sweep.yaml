@@ -1,0 +1,28 @@
+program: run_exp_vit.py
+entity: naga-karthik
+project: nsl-project
+method: grid
+metric:
+  name: '[val]_accuracy'
+  goal: maximize
+parameters:
+  log_dir:
+    value: '/home/GRAMES.POLYMTL.CA/u114716/neural_scaling_laws/nsl-project/results'
+  optimizer:
+    value: 'adam'
+  block:
+    values: ['prenorm', 'postnorm']
+  batch_size:
+    values: [64, 128, 256, 512]
+  patch_size:
+    values: [4, 8, 16]
+  hidden_dim:
+    values: [128, 256, 384, 512]
+  layers:
+    values: [2, 3, 4]
+  lr:
+    values: [1e-3, 5e-3, 1e-4, 5e-4, 1e-5]
+  epochs:
+    values: [100, 200, 400]
+  
+
