@@ -337,7 +337,7 @@ class VisionTransformer(nn.Module):
         #Adding the cls token to the sequnence 
         self.sequence_length= 1+ num_patches
         # Layers/Networks
-        print(dropout)
+#         print(dropout)
         self.input_layer = nn.Linear(num_channels*(patch_size**2), embed_dim)
         if block =='prenorm':
           self.transformer = nn.Sequential(*[PreNormAttentionBlock(embed_dim, hidden_dim, num_heads,self.sequence_length, dropout=dropout) for _ in range(num_layers)])
@@ -394,11 +394,15 @@ class VisionTransformer(nn.Module):
         # Preprocess input
         x = self.get_patches(x, self.patch_size)
         B, T, _ = x.shape
+#         print(x.shape)
         x = self.input_layer(x)
         
         # Add CLS token and positional encoding
         cls_token = self.cls_token.repeat(B, 1, 1)
         x = torch.cat([cls_token, x], dim=1)
+        
+#         print(x, B, T)
+        
         x = x + self.pos_embedding[:,:T+1]
         
         #Add dropout and then the transformer

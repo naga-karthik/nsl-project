@@ -11,9 +11,9 @@ import torch.optim as optim
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-## Torchvision
+# Torchvision
 import torchvision
-from torchvision.datasets import CIFAR10
+from torchvision.datasets import CIFAR10, CIFAR100, Places365
 from torchvision import transforms
 
 from vit_solution import VisionTransformer
@@ -42,29 +42,27 @@ def train(epoch, model, dataloader, optimizer, args):
     model.train()
 
     total_iters = 0
-    epoch_accuracy=0
-    epoch_loss=0
+    epoch_accuracy = 0
+    epoch_loss = 0
     gpu_idx = 0
     gpu_mem = 0.0
     start_time = time.time()
-    
 
     for idx, batch in enumerate(
         tqdm(
             dataloader, desc="Epoch {0}".format(epoch), disable=(not args.progress_bar)
         )
     ):
-    
+
         batch = to_device(batch, args.device)
         optimizer.zero_grad()
-        
+
         imgs, labels = batch
         logits = model(imgs)
-        
 
         loss = model.loss(logits, labels)
-        #print(loss)
-        #losses.append(loss.item())
+        # print(loss)
+        # losses.append(loss.item())
         acc = (logits.argmax(dim=1) == labels).float().mean()
 
         loss.backward()
@@ -76,22 +74,21 @@ def train(epoch, model, dataloader, optimizer, args):
         if idx % args.print_every == 0:
             gpu_mem += mem_report()
             gpu_idx += 1
-            tqdm.write(f'Average GPU memory free {gpu_mem/gpu_idx}')
+#             tqdm.write(f'Average GPU memory free {gpu_mem/gpu_idx}')
             tqdm.write(f"[TRAIN] Epoch: {epoch}, Iter: {idx}, Loss: {loss.item():.5f}")
 
-    
-    #print(epoch_loss)
-    
+    # print(epoch_loss)
 
-    tqdm.write(f"== [TRAIN] Epoch: {epoch}, Accuracy: {epoch_accuracy:.3f} ==>")
+    tqdm.write(
+        f"== [TRAIN] Epoch: {epoch}, Accuracy: {epoch_accuracy:.3f} ==>")
 
     return epoch_loss, epoch_accuracy, time.time() - start_time, gpu_mem/gpu_idx
 
 
 def evaluate(epoch, model, dataloader, args, mode="val"):
     model.eval()
-    epoch_accuracy=0
-    epoch_loss=0
+    epoch_accuracy = 0
+    epoch_loss = 0
     total_loss = 0.0
     total_iters = 0
     gpu_idx = 0
@@ -101,13 +98,13 @@ def evaluate(epoch, model, dataloader, args, mode="val"):
 
     with torch.no_grad():
         for idx, batch in enumerate(
-            tqdm(dataloader, desc="Evaluation", disable=(not args.progress_bar))
+            tqdm(dataloader, desc="Evaluation",
+                 disable=(not args.progress_bar))
         ):
             batch = to_device(batch, args.device)
 
             imgs, labels = batch
             logits = model(imgs)
-            
 
             loss = model.loss(logits, labels)
             acc = (logits.argmax(dim=1) == labels).float().mean()
@@ -119,12 +116,10 @@ def evaluate(epoch, model, dataloader, args, mode="val"):
             if idx % args.print_every == 0:
                 gpu_mem += mem_report()
                 gpu_idx += 1
-                tqdm.write(f'Average GPU memory free {gpu_mem/gpu_idx}')
-                tqdm.write(
-                    f"[{mode.upper()}] Epoch: {epoch}, Iter: {idx}, Loss: {loss.item():.5f}"
-                )
-
-    
+#                 tqdm.write(f'Average GPU memory free {gpu_mem/gpu_idx}')
+#                 tqdm.write(
+#                     f"[{mode.upper()}] Epoch: {epoch}, Iter: {idx}, Loss: {loss.item():.5f}"
+#                 )
 
         tqdm.write(
             f"=== [{mode.upper()}] Epoch: {epoch}, Iter: {idx}, Accuracy: {epoch_accuracy:.3f} ===>"
@@ -137,35 +132,112 @@ def main(args):
     # Seed the experiment, for repeatability
     seed_experiment(args.seed)
 
-    test_transform = transforms.Compose([transforms.ToTensor(),
-                                     transforms.Normalize([0.49139968, 0.48215841, 0.44653091], [0.24703223, 0.24348513, 0.26158784])
-                                     ])
-    # For training, we add some augmentation. Networks are too powerful and would overfit.
-    train_transform = transforms.Compose([transforms.RandomHorizontalFlip(),
-                                          transforms.RandomResizedCrop((32,32),scale=(0.8,1.0),ratio=(0.9,1.1)),
-                                          transforms.ToTensor(),
-                                          transforms.Normalize([0.49139968, 0.48215841, 0.44653091], [0.24703223, 0.24348513, 0.26158784])
-                                        ])
+#     test_transform = transforms.Compose([transforms.ToTensor(),
+#                                      transforms.Normalize([0.49139968, 0.48215841, 0.44653091], [0.24703223, 0.24348513, 0.26158784])
+#                                      ])
+#     # For training, we add some augmentation. Networks are too powerful and would overfit.
+#     train_transform = transforms.Compose([transforms.RandomHorizontalFlip(),
+#                                           transforms.RandomResizedCrop((32,32),scale=(0.8,1.0),ratio=(0.9,1.1)),
+#                                           transforms.ToTensor(),
+#                                           transforms.Normalize([0.49139968, 0.48215841, 0.44653091], [0.24703223, 0.24348513, 0.26158784])
+#                                         ])
     # Loading the training dataset. We need to split it into a training and validation part
     # We need to do a little trick because the validation set should not use the augmentation.
-    train_dataset = CIFAR10(root='./data', train=True, transform=train_transform, download=True)
-    val_dataset = CIFAR10(root='./data', train=True, transform=test_transform, download=True)
+    # Augmentation
+    test_transform = transforms.Compose([transforms.Resize((160, 160)),
+                                         transforms.ToTensor(),
+                                         transforms.Normalize([0.485, 0.456, 0.406], [
+                                                              0.229, 0.224, 0.225])
+                                         ])
+    # For training, we add some augmentation. Networks are too powerful and would overfit.
+    train_transform = transforms.Compose([
+        transforms.RandomResizedCrop(
+            (160, 160), scale=(0.8, 1.0), ratio=(0.9, 1.1)),
+        transforms.RandomHorizontalFlip(),
+        transforms.ToTensor(),
+        transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+    ])
+
+    if args.dataset == 'cifar100':
+        num_classes = 100
+        train_dataset = CIFAR100(
+            root='./data', train=True, transform=train_transform, download=True)
+        val_dataset = CIFAR100(
+            root='./data', train=True, transform=test_transform, download=True)
+        # Loading the test set
+        test_set = CIFAR100(root='./data', train=False,
+                            transform=test_transform, download=True)
+
+        train_set, _ = torch.utils.data.random_split(
+            train_dataset, [45000, 5000], generator=torch.Generator().manual_seed(args.seed))
+        _, val_set = torch.utils.data.random_split(
+            val_dataset, [45000, 5000], generator=torch.Generator().manual_seed(args.seed))
+
+    elif args.dataset == 'cifar10':
+        num_classes = 10
+        train_dataset = CIFAR10(root='./data', train=True,
+                                transform=train_transform, download=True)
+        val_dataset = CIFAR10(root='./data', train=True,
+                              transform=test_transform, download=True)
+        # Loading the test set
+        test_set = CIFAR10(root='./data', train=False,
+                           transform=test_transform, download=True)
+
+        train_set, _ = torch.utils.data.random_split(
+            train_dataset, [45000, 5000], generator=torch.Generator().manual_seed(args.seed))
+        _, val_set = torch.utils.data.random_split(
+            val_dataset, [45000, 5000], generator=torch.Generator().manual_seed(args.seed))
+
+    elif args.dataset == 'places365':
+        # no. of images in places365: train-standard: 1803460 and val: 36500
+        num_classes = 365
+        dataset = Places365(root='./data', split='train-standard',
+                            small=True, transform=train_transform, download=False)
+        train_num = 1500000     # 1.5M training images
+        val_num = len(dataset) - train_num
+        # Loading the test set
+        test_set = Places365(root='./data', split='val',
+                             small=True, transform=test_transform, download=False)
+        train_set, val_set = torch.utils.data.random_split(
+            dataset, [train_num, val_num], generator=torch.Generator().manual_seed(args.seed))
+        
+#     train_dataloader = DataLoader(train_set, batch_size=args.batch_size, shuffle=True, drop_last=True, pin_memory=True, num_workers=4)
+#     valid_dataloader = DataLoader(val_set, batch_size=args.batch_size, shuffle=False, drop_last=False, num_workers=4)
+#     test_dataloader = DataLoader(test_set, batch_size=args.batch_size, shuffle=False, drop_last=False, num_workers=4)
     
-    train_set, _ = torch.utils.data.random_split(train_dataset, [45000, 5000], generator=torch.Generator().manual_seed(args.seed))
-     _, val_set = torch.utils.data.random_split(val_dataset, [45000, 5000], generator=torch.Generator().manual_seed(args.seed))
+    elif args.dataset == 'imagenette':
+        
+        num_classes = 10
+        root = '/home/mila/v/venkatesh.ramesh/scratch/nsl-project/imagenette/imagenette2-160'
 
-    # Loading the test set
-    test_set = CIFAR10(root='./data', train=False, transform=test_transform, download=True)
+        full_dataset = torchvision.datasets.ImageFolder(os.path.join(root, 'train'), train_transform)
 
-    # We define a set of data loaders that we can use for various purposes later.
-    train_dataloader = DataLoader(train_set, batch_size=args.batch_size, shuffle=True, drop_last=True, pin_memory=True, num_workers=4)
-    valid_dataloader = DataLoader(val_set, batch_size=args.batch_size, shuffle=False, drop_last=False, num_workers=4)
-    test_dataloader =DataLoader(test_set, batch_size=args.batch_size, shuffle=False, drop_last=False, num_workers=4)
+        train_size = int(0.8 * len(full_dataset))
+        validation_size = len(full_dataset) - train_size
+        train_set, valid_set = torch.utils.data.random_split(full_dataset, [train_size, validation_size])
+        
+        # Loading the test set
+        test_set = torchvision.datasets.ImageFolder(os.path.join(root, 'val'), test_transform)
+
+
+#     # We define a set of data loaders that we can use for various purposes later.
+    train_dataloader = torch.utils.data.DataLoader(train_set, batch_size=args.batch_size, shuffle=True, pin_memory=True, num_workers=4)
+    valid_dataloader = torch.utils.data.DataLoader(valid_set, batch_size=args.batch_size, shuffle=False, num_workers=4)
+    test_dataloader  = torch.utils.data.DataLoader(test_set , batch_size=args.batch_size, shuffle=False,num_workers=4)
+
 
     # Model
+    img_h, img_w = 160, 160
+    num_patches = (img_h//args.patch_size) *  (img_w//args.patch_size) 
     if args.model == "vit":
-        model = VisionTransformer(
-            num_layers=args.layers, block=args.block)
+         model = VisionTransformer(
+             num_layers=args.layers,
+             block=args.block,
+             num_classes=num_classes,
+             patch_size=args.patch_size,
+             num_patches=num_patches,
+             hidden_dim=args.hidden_dim,
+             )
     else:
         raise ValueError("Unknown model {0}".format(args.model))
     model.to(args.device)
@@ -202,13 +274,15 @@ def main(args):
 
         tqdm.write(f"====== Epoch {epoch} ======>")
 
-        loss, acc, wall_time, mem = train(epoch, model, train_dataloader, optimizer,args)
+        loss, acc, wall_time, mem = train(
+            epoch, model, train_dataloader, optimizer, args)
         train_losses.append(loss)
         train_accs.append(acc)
         train_times.append(wall_time)
         train_mem.append(mem)
 
-        loss, acc, wall_time, mem = evaluate(epoch, model, valid_dataloader,args)
+        loss, acc, wall_time, mem = evaluate(
+            epoch, model, valid_dataloader, args)
         valid_losses.append(loss)
         valid_accs.append(acc)
         valid_times.append(wall_time)
@@ -238,12 +312,17 @@ def main(args):
 if __name__ == "__main__":
     import argparse
 
-    parser = argparse.ArgumentParser(description="Run an experiment for assignment 2.")
+    parser = argparse.ArgumentParser(
+        description="Run an experiment for assignment 2.")
 
     data = parser.add_argument_group("Data")
-    
+
     data.add_argument(
         "--batch_size", type=int, default=128, help="batch size (default: %(default)s)."
+    )
+
+    data.add_argument(
+        "--dataset", type=str, default='cifar10', help="Dataset for training the model."
     )
 
     model = parser.add_argument_group("Model")
@@ -254,7 +333,7 @@ if __name__ == "__main__":
         default="vit",
         help="name of the model to run (default: %(default)s).",
     )
-    
+
     model.add_argument(
         "--layers",
         type=int,
@@ -267,7 +346,20 @@ if __name__ == "__main__":
         default='prenorm',
         help="number of layers in the model (default: %(default)s).",
     )
-
+    model.add_argument(
+         "-ps", "--patch_size",
+         type=int,
+         default=4,
+         help="the patch size to be used (default: %(default)s.",
+     )
+    
+    model.add_argument(
+         "-hdim", "--hidden_dim",
+         type=int,
+         default=384,
+         help="dimension of the hidden layers (default: %(default)s.",
+     )
+    
     optimization = parser.add_argument_group("Optimization")
     optimization.add_argument(
         "--epochs",
@@ -368,7 +460,6 @@ if __name__ == "__main__":
         )
 
     logs = main(args)
-    #Reuse the save logs function in utils to your needs if needed.
+    # Reuse the save logs function in utils to your needs if needed.
     if args.log is not None:
         save_logs(args, *logs)
-
