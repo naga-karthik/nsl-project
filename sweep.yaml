@@ -1,0 +1,35 @@
+program: run_exp_vit_pl.py
+entity: naga-karthik
+project: nsl-project
+method: random
+metric:
+  name: 'test_acc'
+  goal: maximize
+parameters:
+  log_dir:
+    value: '/home/GRAMES.POLYMTL.CA/u114716/neural_scaling_laws/nsl-project/results/imagenette_random_sweep'
+  optimizer:
+    value: 'adamw'
+  num_gpus:
+    value: 2
+  dataset: 
+    values: ['imagenette', 'imagewoof']
+  block:
+    values: ['prenorm', 'postnorm']
+  batch_size:
+    values: [8, 16, 32]
+  patch_size:
+    values: [4, 8, 16]
+  hidden_dim:
+    values: [256, 384, 512]
+  layers:
+    values: [4, 8, 12]
+  lr:
+    values: [1e-4, 1e-3, 1e-2]
+  epochs:
+    values: [150, 250]
+  num_heads:
+    values: [4, 8, 12]
+  dropout:
+    values: [0.0, 0.25, 0.5]
+  
